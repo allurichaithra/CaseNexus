@@ -1,0 +1,133 @@
+# ==============================================================================
+# DATATHON 2026: Explainable Crime Intelligence & Case-Linking Platform
+# Master Synthetic Data Generation Configuration
+# File: generator/config/dataset.yaml
+# ==============================================================================
+
+meta:
+  project_name: "Explainable Crime Intelligence & Case-Linking Platform"
+  version: "1.0.0"
+  target_year: 2026
+  random_seed: 42
+  state_name: "KARNATAKA"
+  state_id: 29
+
+# ------------------------------------------------------------------------------
+# 1. GENERATION SCALE & TARGET COUNTS
+# ------------------------------------------------------------------------------
+scale:
+  districts_count: 5                # Sample Karnataka Districts
+  units_per_district: 8             # Police Stations per District
+  employees_per_unit: 10            # Officers/Staff per Police Station
+  courts_per_district: 3            # Courts per District
+  
+  # Core Transaction Volumes
+  min_total_cases: 3000             # Minimum CaseMaster records
+  max_total_cases: 4000             # Maximum CaseMaster records
+  avg_victims_per_case: 1.2
+  avg_complainants_per_case: 1.0
+  avg_accused_per_case: 1.8
+  arrest_ratio_per_case: 0.65       # 65% of cases have arrest events
+  chargesheet_ratio: 0.45           # 45% of cases reach Chargesheet stage
+
+# ------------------------------------------------------------------------------
+# 2. DATE & TIME BOUNDS
+# ------------------------------------------------------------------------------
+temporal_bounds:
+  start_date: "2024-01-01"
+  end_date: "2026-07-21"
+  registration_delay_hours:
+    min: 1
+    max: 72
+    mean: 12
+
+# ------------------------------------------------------------------------------
+# 3. GEOSPATIAL BOUNDING BOX (KARNATAKA STATE COORD RANGES)
+# ------------------------------------------------------------------------------
+geospatial:
+  lat_min: 11.5945
+  lat_max: 18.4762
+  lng_min: 74.0543
+  lng_max: 78.5886
+  # District Bounding Boxes for realistic distribution
+  district_centers:
+    1001: { name: "Bengaluru City", lat: 12.9716, lng: 77.5946, radius_km: 25 }
+    1002: { name: "Mysuru City", lat: 12.2958, lng: 76.6394, radius_km: 18 }
+    1003: { name: "Hubballi-Dharwad", lat: 15.3647, lng: 75.1240, radius_km: 20 }
+    1004: { name: "Mangaluru City", lat: 12.9141, lng: 74.8560, radius_km: 15 }
+    1005: { name: "Belagavi", lat: 15.8497, lng: 74.4977, radius_km: 22 }
+
+# ------------------------------------------------------------------------------
+# 4. ML PATTERN INJECTION CONFIGURATION
+# ------------------------------------------------------------------------------
+ml_patterns:
+  crime_series:
+    enabled: true
+    total_series_clusters: 25       # Target linked crime series to inject
+    min_cases_per_series: 3
+    max_cases_per_series: 7
+    series_types:
+      - type: "NIGHT_BREAK_IN_GANG"
+        crime_major_head_id: 101     # House Break-In / Theft
+        cross_district_probability: 0.70
+        modus_operandi_keywords:
+          - "crowbar used to break main door lock"
+          - "targeted locked independent house between midnight and 4 AM"
+          - "silver items and cash stolen from almirah"
+          - "CCTV footage shows two individuals on a black Pulsar"
+      - type: "CHAIN_SNATCHING_DUO"
+        crime_major_head_id: 102     # Robbery / Snatching
+        cross_district_probability: 0.85
+        modus_operandi_keywords:
+          - "two riders on unnumbered scooter"
+          - "approached solitary woman walking during morning hours"
+          - "snatched gold chain weighing approximately 20-40 grams"
+          - "escaped towards main bypass highway"
+      - type: "CYBER_PHISHING_PARTTIME_JOB"
+        crime_major_head_id: 103     # Cyber Crime
+        cross_district_probability: 0.95
+        modus_operandi_keywords:
+          - "victim contacted via Telegram regarding part-time rating job"
+          - "initial small profit credited to gain trust"
+          - "transferred funds across multiple fake UPI IDs"
+          - "total loss reported above 2 lakhs"
+
+  repeat_accused:
+    enabled: true
+    total_repeat_entities: 45       # Target persistent real-world individuals
+    appearances_per_entity:
+      min: 2
+      max: 5
+    noise_profiles:
+      name_transliteration_swap: 0.35
+      age_drift_years: 3              # Age varies by +/- 3 years across FIRs
+      missing_initials: 0.25
+
+# ------------------------------------------------------------------------------
+# 5. DATA QUALITY & NOISE INJECTION
+# ------------------------------------------------------------------------------
+data_quality_noise:
+  station_geocoding_error_rate: 0.08  # 8% of cases geocoded strictly to Police Station coordinates
+  missing_brief_facts_rate: 0.03      # 3% empty/truncated narratives
+  null_incident_to_date_rate: 0.12    # 12% missing IncidentToDate
+  typo_in_names_rate: 0.15           # Whitespace / casing / minor typos
+
+# ------------------------------------------------------------------------------
+# 6. ETHICAL AI GUARDRAILS
+# ------------------------------------------------------------------------------
+ethical_guardrails:
+  protected_attributes_excluded_from_ml:
+    - "ComplainantDetails.ReligionID"
+    - "ComplainantDetails.CasteID"
+  enforce_strict_isolation: true
+
+# ------------------------------------------------------------------------------
+# 7. EXPORT CONFIGURATION
+# ------------------------------------------------------------------------------
+export:
+  output_directory: "./output"
+  formats:
+    - "csv"
+    - "parquet"
+    - "sqlite"
+  compression: "snappy"

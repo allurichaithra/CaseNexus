@@ -1,0 +1,8 @@
+CrimeSubHeadID,CrimeHeadID,CrimeHeadName,SeqID
+1001,101,Night House Breaking,1
+1002,101,Day House Breaking,2
+1003,102,Chain Snatching on Road,1
+1004,102,Highway Robbery,2
+1005,103,Part-Time Job / Telegram Scam,1
+1006,103,UPI / SIM Swap Fraud,2
+1007,104,Grievous Hurt,1

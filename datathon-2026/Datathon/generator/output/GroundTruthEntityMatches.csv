@@ -1,0 +1,11 @@
+MatchID,AccusedMasterID_A,AccusedMasterID_B,MatchReason,GroundTruthConfidence
+1,2701,1954,Phonetic Similarity & Age Window Overlap,0.9
+2,190,3669,Phonetic Similarity & Age Window Overlap,0.9
+3,2325,2388,Phonetic Similarity & Age Window Overlap,0.9
+4,3403,1951,Phonetic Similarity & Age Window Overlap,0.9
+5,4965,2972,Phonetic Similarity & Age Window Overlap,0.9
+6,4786,3981,Phonetic Similarity & Age Window Overlap,0.9
+7,4446,4343,Phonetic Similarity & Age Window Overlap,0.9
+8,3714,3857,Phonetic Similarity & Age Window Overlap,0.9
+9,1027,2270,Phonetic Similarity & Age Window Overlap,0.9
+10,3135,3153,Phonetic Similarity & Age Window Overlap,0.9

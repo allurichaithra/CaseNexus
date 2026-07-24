@@ -1,0 +1,5 @@
+CaseStatusID,CaseStatusName
+101,Under Investigation
+102,Charge Sheeted
+103,Closed / Untraced
+104,Transferred

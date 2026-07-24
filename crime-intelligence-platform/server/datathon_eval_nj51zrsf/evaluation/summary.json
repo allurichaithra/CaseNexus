@@ -1,0 +1,7 @@
+{
+  "case_fingerprints_generated": 3003,
+  "case_links_generated": 57215,
+  "entity_matches_generated": 200,
+  "ground_truth_case_links": 16,
+  "ground_truth_entity_matches": 10
+}

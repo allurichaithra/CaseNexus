@@ -1,0 +1,17 @@
+LinkID,SourceCaseMasterID,TargetCaseMasterID,SeriesType,GroundTruthConfidence
+1,1792,2927,CyberPhishing,0.95
+2,1792,2669,CrossDistrictGang,0.95
+3,803,1030,HighwayRobbery,0.95
+4,803,509,CyberPhishing,0.95
+5,356,80,HighwayRobbery,0.95
+6,1524,1704,CrossDistrictGang,0.95
+7,1524,1465,CyberPhishing,0.95
+8,1267,2643,CrossDistrictGang,0.95
+9,1267,1463,CrossDistrictGang,0.95
+10,1267,2149,CrossDistrictGang,0.95
+11,1294,2148,CrossDistrictGang,0.95
+12,1294,2357,HighwayRobbery,0.95
+13,1884,1971,HighwayRobbery,0.95
+14,1884,649,HighwayRobbery,0.95
+15,1884,2691,HighwayRobbery,0.95
+16,717,473,CrossDistrictGang,0.95

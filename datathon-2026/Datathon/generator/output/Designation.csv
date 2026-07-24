@@ -1,0 +1,4 @@
+DesignationID,DesignationName,Active,SortOrder
+101,Investigating Officer (IO),1,1
+102,Station House Officer (SHO),1,2
+103,Station Writer / Crime Clerk,1,3
