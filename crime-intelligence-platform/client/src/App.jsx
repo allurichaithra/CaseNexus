@@ -27,8 +27,8 @@ function App() {
         <div className="brand-block">
           <div className="brand-icon">🛡️</div>
           <div>
-            <h1>Crime Intelligence</h1>
-            <p>Operational analytics</p>
+            <h1>CaseNexus</h1>
+            <p>Connecting cases. Revealing patterns. Accelerating investigations.</p>
           </div>
         </div>
 
@@ -48,7 +48,7 @@ function App() {
       <main className="main-panel">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Live intelligence workspace</p>
+            <p className="eyebrow">CaseNexus • Live intelligence workspace</p>
             <h2>Investigative decision support</h2>
           </div>
           <div className="topbar-badge">Backend • http://127.0.0.1:8001</div>
