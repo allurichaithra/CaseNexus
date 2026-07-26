@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import pandas as pd
 
@@ -13,10 +13,6 @@ DATASET_DIRS = [
     WORKSPACE_ROOT / "datathon-2026" / "data" / "synthetic",
     WORKSPACE_ROOT / "datathon-2026" / "data" / "ground_truth",
 ]
-
-DATASET_DIR = next((path for path in DATASET_DIRS if path.exists()), DATASET_DIRS[0])
-GROUND_TRUTH_DIR = next((path for path in [WORKSPACE_ROOT / "datathon-2026" / "Datathon" / "generator" / "output"] if path.exists()), DATASET_DIR)
-
 
 def discover_dataset_dir() -> Path:
     """Locate the real CSV export directory from the workspace structure."""

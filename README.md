@@ -1,236 +1,169 @@
 # CaseNexus — Explainable Crime Intelligence Platform
 
-CaseNexus is a hackathon-ready crime intelligence prototype that connects FIR records, surfaces explainable related-case signals, and helps investigators explore entity matches, hotspots, network patterns, and trend analytics from a single workspace.
-
-> Connecting cases. Revealing patterns. Accelerating investigations.
-
-## Problem
-
-Investigative teams often need to work across fragmented FIR data, multiple case records, and supporting entities without a clear, explainable way to identify likely relationships. This project addresses that gap by combining structured crime data with deterministic, explainable intelligence signals to support case triage and investigative analysis.
-
-## Solution
-
-CaseNexus builds a lightweight intelligence pipeline over a synthetic crime dataset and exposes it through a React-based dashboard plus a FastAPI backend. The system generates:
-
-- case fingerprints for each FIR/case record
-- explainable related-FIR candidates based on narrative, crime, legal, geographic, temporal, and entity evidence
-- entity match candidates for accused-person resolution
-- hotspot, network, and trend views for operational analysis
-
-## What is implemented
-
-### Core capabilities
-
-- FIR browsing and detail inspection
-- Explainable related-case intelligence with ranked scores and evidence-based explanations
-- Entity intelligence for accused identity matching candidates
-- Crime hotspot mapping using case coordinates
-- Investigation network visualization for selected cases
-- Analytics dashboards for daily and monthly trends
-- Evaluation artifacts derived from the available ground-truth data
-
-### Explainable related-FIR intelligence
-
-The backend uses a deterministic scoring engine to rank likely related cases for a selected FIR. The scoring combines:
-
-- narrative similarity from brief facts
-- matching crime major head
-- overlapping legal sections
-- geographic proximity
-- temporal proximity
-- shared accused identity
-
-Each candidate returns an explanation string describing the evidence that contributed to the score.
-
-### Entity intelligence
-
-The entity engine generates candidate accused-entity matches using a lightweight rule-based approach. It considers:
-
-- normalized name token overlap
-- compatible age window
-- matching gender
-
-Matches are returned with confidence and evidence lists.
-
-### Hotspots, networks, and analytics
-
-The frontend includes separate views for:
-
-- crime hotspots on an interactive map
-- an investigation network graph for case relationships
-- trend analytics for daily and monthly activity
+A human-in-the-loop crime intelligence platform that links related FIRs and detects repeat accused across jurisdictions using explainable multi-signal scoring. AI proposes, officers decide — never auto-merging.
 
 ## Architecture
 
-The project is organized into two main layers:
+```
+client/                 React 18 + Vite
+  src/
+    pages/              FIR Explorer, Hotspots, Entities, Case Detail
+    services/api.js     HTTP client for all backend endpoints
+    demo-config.js      Golden demo case IDs for pitch
 
-- Frontend: React + Vite + React Router + Recharts + Leaflet
-- Backend: FastAPI service with pandas-based data loading and deterministic intelligence engines
+server/                 FastAPI + Python 3.13
+  main.py               API endpoints, global engine singletons
+  intelligence/
+    case_fingerprinting.py   Generates per-case feature vectors
+    related_fir_engine.py    Multi-signal case linking with inverted index
+    entity_resolution.py     Cross-case accused matching
+  data/processed/
+    CaseLinkResult.csv       Persisted case link decisions
+    EntityMatchResult.csv    Persisted entity match decisions
+```
 
-### Backend modules
+## Quick Start
 
-- [server/main.py](server/main.py): FastAPI application, endpoints, and startup logic
-- [server/data_loader.py](server/data_loader.py): dataset discovery and CSV loading
-- [server/intelligence/case_fingerprinting.py](server/intelligence/case_fingerprinting.py): case fingerprint generation
-- [server/intelligence/related_fir_engine.py](server/intelligence/related_fir_engine.py): related-case scoring and explanation generation
-- [server/intelligence/entity_resolution.py](server/intelligence/entity_resolution.py): accused entity match generation
-- [server/generate_outputs.py](server/generate_outputs.py): produces processed CSV outputs and evaluation files
+```bash
+# Backend
+cd server
+pip install -r requirements.txt
+python main.py              # Starts on http://localhost:8001
 
-### Frontend modules
+# Frontend (separate terminal)
+cd client
+npm install
+npm run dev                 # Starts on http://localhost:5173
+```
 
-- [client/src/App.jsx](client/src/App.jsx): shell layout, navigation, and branding
-- [client/src/pages](client/src/pages): dashboard, FIR explorer, related cases, entities, hotspots, network, and trends pages
-- [client/src/services/api.js](client/src/services/api.js): frontend API client
+## API Endpoints
 
-## Tech stack
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/dashboard` | Aggregate stats |
+| GET | `/api/firs?limit=&offset=` | Paginated FIR list |
+| GET | `/api/firs/{id}` | FIR detail + accused + victims + act sections |
+| GET | `/api/firs/{id}/related?limit=` | Related case recommendations |
+| POST | `/api/firs/{id}/related/action` | Record officer CONFIRMED/REJECTED decision |
+| GET | `/api/firs/{id}/related/decisions` | Retrieve decisions for a case |
+| GET | `/api/entities?limit=` | Entity resolution candidates |
+| POST | `/api/entities/action` | Record entity match decision |
+| GET | `/api/entities/decisions` | Retrieve all entity decisions |
+| GET | `/api/hotspots?limit=` | Geospatial crime coordinates |
+| GET | `/api/trends` | Daily/monthly crime trends |
+| GET | `/api/network?case_id=` | Case relationship graph |
+| GET | `/api/evaluation` | Ground truth data info |
 
-### Frontend
+## How Case Linking Works
 
-- React 18
-- Vite
-- React Router DOM
-- Recharts
-- Leaflet and react-leaflet
-- Lucide icons
+Each candidate pair is scored on four independent signals:
 
-### Backend
+| Signal | Weight | What It Measures |
+|--------|--------|------------------|
+| Narrative | 25% | Token-level Brief Facts similarity via inverted index |
+| Geographic | 30% | Distance between police stations (km buckets) |
+| Crime Head | 15% | CrimeMajorHeadID / CrimeMinorHeadID match |
+| Legal Sections | 10% | Shared IPC/BNS act-section pairs |
+| Temporal | 10% | Days between crime registration dates |
+| Entity | 10% | Shared accused names across cases |
 
-- Python
-- FastAPI
-- Uvicorn
-- pandas
+Overall confidence = weighted sum. No black-box metrics — every number maps to an investigative signal.
+
+## How Entity Resolution Works
+
+Matches accused persons across FIRs using:
+
+- **Full name match** (0.65 base score)
+- **Surname-only match** (0.45 base score)
+- **Age tolerance** within ±10 years
+- **Shared case context** boost
+
+Threshold: 0.40 minimum confidence.
+
+## Human-in-the-Loop
+
+1. Engine proposes related cases / entity matches with confidence scores
+2. Officer reviews the evidence panel (narrative, geography, sections, temporal)
+3. Officer clicks **CONFIRM** or **REJECT**
+4. Decision persists to `CaseLinkResult.csv` / `EntityMatchResult.csv` with timestamp and officer ID
+5. Cases are **never** auto-merged — every link requires human sign-off
+
+## Performance
+
+- Global engine singletons — no per-request instantiation
+- Inverted index for O(token) narrative lookup instead of O(n) full scan
+- Precomputed accused names and act sections for O(1) scoring
+- Lazy related-cases cache — first request computes, subsequent requests return instantly
+- Cached `/api/firs/{id}/related`: ~8ms response time
+
+## Golden Demo Cases
+
+| Demo | IDs | Confidence | Why It Works |
+|------|-----|------------|--------------|
+| Case Link | FIR 1792 → FIR 2823 | 80% | Identical chain-snatching narrative, same district |
+| Cross-Jurisdiction | FIR 803 → FIR 2917 | 90% | Same modus operandi across different districts |
+| Entity Resolution | "Sunita Kulkarni" | — | Appears across 56 FIRs |
+
+See `DEMO_SCRIPT.md` for the full 3-minute pitch sequence.
+
+## Tech Stack
+
+- **Frontend:** React 18, React Router, React-Leaflet, Recharts, Vite
+- **Backend:** FastAPI, Pandas, Python 3.13
+- **Data:** CSV-based persistence (3,003 cases, 5,317 accused records)
+- **Maps:** CARTO light basemap via OpenStreetMap tiles
 
 ## Dataset
 
-The platform loads CSV files from the workspace dataset directory under the datathon generator output area. The backend expects tables such as:
+Synthetic crime dataset generated for the Datathon 2026 challenge. Contains:
 
-- cases / CaseMaster
-- accused
-- victims
-- act sections
-- units
-- districts
-- crime heads and sub-heads
-- ground-truth case links and entity matches
-
-The current working dataset produced the following generated summary artifacts:
-
-- 3003 case fingerprints
-- 160 case-link rows
-- 200 entity-match rows
-- 16 ground-truth case-link rows
-- 10 ground-truth entity-match rows
-
-## APIs
-
-The FastAPI backend exposes the following implemented endpoints:
-
-- GET /health
-- GET /api/dataset-info
-- GET /api/dashboard
-- GET /api/firs
-- GET /api/firs/{case_id}
-- GET /api/firs/{case_id}/related
-- GET /api/entities
-- GET /api/entities/{entity_id}
-- GET /api/entities/{entity_id}/cases
-- GET /api/hotspots
-- GET /api/trends
-- GET /api/network
-- GET /api/evaluation
-
-## Project structure
-
-```text
-crime-intelligence-platform/
-  client/
-    src/
-      App.jsx
-      pages/
-      services/
-  server/
-    intelligence/
-    tests/
-    data_loader.py
-    generate_outputs.py
-    main.py
-    requirements.txt
-```
-
-## Setup and run
-
-### 1. Create and activate a Python environment
-
-From the workspace root:
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 2. Install backend dependencies
-
-```bash
-cd crime-intelligence-platform/server
-pip install -r requirements.txt
-```
-
-### 3. Install frontend dependencies
-
-```bash
-cd ../client
-npm install
-```
-
-### 4. Start the backend
-
-```bash
-cd ../server
-python main.py
-```
-
-The API runs on http://127.0.0.1:8001.
-
-### 5. Start the frontend
-
-In a separate terminal:
-
-```bash
-cd ../client
-npm run dev
-```
-
-The Vite app is served on http://localhost:5173 by default.
+- `CaseMaster.csv` — 3,003 FIR records with coordinates, crime heads, narratives
+- `Accused.csv` — 5,317 accused persons linked to cases
+- `Victims.csv` — Victim records
+- `ActSection.csv` — IPC/BNS sections per case
+- `GroundTruthCaseLink.csv` — 16 verified case link pairs
+- `GroundTruthEntityMatch.csv` — 10 verified entity match pairs
 
 ## Evaluation
 
-The project includes evaluation support through generated outputs and summary JSON files in the server evaluation directory. The current implementation writes:
+Run the evaluation pipeline:
 
-- case fingerprint CSV output
-- case link result CSV output
-- entity match result CSV output
-- evaluation JSON files for case links and entity matches
-- a summary JSON file describing counts
+```bash
+cd server
+python generate_outputs.py
+```
 
-## Limitations
+Results saved to `server/evaluation/`:
+- `case_link_evaluation.json` — 4/16 ground truth recall
+- `entity_match_evaluation.json` — 10/10 ground truth recall
 
-This implementation is intentionally lightweight and deterministic. Current limitations include:
+## Project Structure
 
-- entity matching is rule-based rather than learned or probabilistic
-- related-case scoring is heuristic and based on available structured fields
-- hotspot and network views are derived from the available dataset and do not include advanced geospatial modeling
-- the UI is a prototype designed for hackathon demonstration and exploration
-
-## Future scope
-
-Potential extensions include:
-
-- integration with richer real-world crime data sources
-- more advanced entity resolution and graph analytics
-- temporal clustering and anomaly detection
-- enhanced explainability and officer workflow tooling
-- production-ready deployment, authentication, and audit trails
-
-## Verification
-
-The current implementation was verified against the repository contents and the frontend build configuration. The frontend branding was updated to CaseNexus and the tagline was added in the shell and document title without changing the app’s structure or behavior.
+```
+crime-intelligence-platform/
+├── client/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── FirsPage.jsx          FIR Explorer with pagination
+│   │   │   ├── CaseDetailPage.jsx    Full FIR record + related cases
+│   │   │   ├── HotspotsPage.jsx      Map + search + viewport filtering
+│   │   │   ├── EntitiesPage.jsx      Repeat accused queue
+│   │   │   └── DashboardPage.jsx     Overview stats
+│   │   ├── services/api.js           All API calls
+│   │   ├── demo-config.js            Demo case IDs
+│   │   └── App.jsx                   Router
+│   └── package.json
+├── server/
+│   ├── main.py                       FastAPI app + endpoints
+│   ├── data_loader.py                CSV ingestion
+│   ├── intelligence/
+│   │   ├── case_fingerprinting.py    Feature vector generation
+│   │   ├── related_fir_engine.py     Case linking engine
+│   │   └── entity_resolution.py      Entity matching engine
+│   ├── generate_outputs.py           Evaluation pipeline
+│   ├── data/
+│   │   └── processed/                Decision CSVs
+│   └── evaluation/                   Accuracy reports
+├── DEMO_SCRIPT.md                    3-minute pitch script
+└── README.md
+```

@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getNetwork } from '../services/api';
 
+function SkeletonGraph() {
+  return (
+    <div className="skeleton-card">
+      <div className="skeleton skeleton-line w-40" style={{ marginBottom: 12 }} />
+      <div className="skeleton" style={{ height: 380, borderRadius: 14 }} />
+    </div>
+  );
+}
+
+const nodeColors = {
+  case: { fill: '#2563eb', stroke: '#3b82f6' },
+  related_case: { fill: '#7c3aed', stroke: '#a78bfa' },
+};
+
 export default function NetworkPage() {
   const [network, setNetwork] = useState({ nodes: [], edges: [] });
+  const [selectedNode, setSelectedNode] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +29,7 @@ export default function NetworkPage() {
   const graphPositions = useMemo(() => {
     return network.nodes.map((node, index) => {
       const angle = (index / Math.max(network.nodes.length, 1)) * Math.PI * 2;
-      const radius = 160;
+      const radius = 150;
       return {
         ...node,
         x: 250 + Math.cos(angle) * radius,
@@ -23,50 +38,92 @@ export default function NetworkPage() {
     });
   }, [network.nodes]);
 
-  if (loading) return <div className="card">Loading investigation network…</div>;
+  if (loading) return <SkeletonGraph />;
 
   return (
     <div className="grid">
       <div className="card">
-        <div className="row heading-row">
-          <h3>Investigation network</h3>
-          <span className="badge">Interactive graph</span>
+        <div className="heading-row">
+          <h3>Investigation Network</h3>
+          <span className="badge">{network.nodes.length} nodes · {network.edges.length} edges</span>
         </div>
         <div className="network-stage">
           <svg viewBox="0 0 500 360" className="network-svg">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
             {network.edges.map((edge, index) => {
               const source = graphPositions.find((node) => node.id === edge.source);
               const target = graphPositions.find((node) => node.id === edge.target);
               if (!source || !target) return null;
+              const isHighlighted = selectedNode === edge.source || selectedNode === edge.target;
               return (
-                <g key={`${edge.source}-${edge.target}-${index}`}>
-                  <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} stroke="#60a5fa" strokeWidth="2" strokeDasharray="6 4" />
+                <line
+                  key={`${edge.source}-${edge.target}-${index}`}
+                  x1={source.x} y1={source.y}
+                  x2={target.x} y2={target.y}
+                  stroke={isHighlighted ? '#2563eb' : 'rgba(37, 99, 236, 0.25)'}
+                  strokeWidth={isHighlighted ? 2.5 : 1.5}
+                  strokeDasharray={isHighlighted ? 'none' : '6 4'}
+                />
+              );
+            })}
+            {graphPositions.map((node) => {
+              const colors = nodeColors[node.type] || nodeColors.case;
+              const isSelected = selectedNode === node.id;
+              return (
+                <g
+                  key={`${node.id}-${node.type}`}
+                  onClick={() => setSelectedNode(isSelected ? null : node.id)}
+                  style={{ cursor: 'pointer' }}
+                  filter={isSelected ? 'url(#glow)' : undefined}
+                >
+                  <circle
+                    cx={node.x} cy={node.y}
+                    r={isSelected ? 26 : 22}
+                    fill={colors.fill}
+                    stroke={isSelected ? '#fff' : colors.stroke}
+                    strokeWidth={isSelected ? 3 : 2}
+                    style={{ transition: 'all 0.2s ease' }}
+                  />
+                  <text
+                    x={node.x} y={node.y + 4}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="#f8fafc"
+                    fontWeight="600"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {node.label}
+                  </text>
                 </g>
               );
             })}
-            {graphPositions.map((node) => (
-              <g key={`${node.id}-${node.type}`}>
-                <circle cx={node.x} cy={node.y} r="22" fill="#1d4ed8" stroke="#bfdbfe" strokeWidth="2" />
-                <text x={node.x} y={node.y + 4} textAnchor="middle" fontSize="10" fill="#f8fafc">
-                  {node.label}
-                </text>
-              </g>
-            ))}
           </svg>
         </div>
       </div>
 
       <div className="card">
-        <div className="row heading-row">
-          <h3>Network entities</h3>
+        <div className="heading-row">
+          <h3>Network Entities</h3>
           <span className="badge">{network.nodes.length} nodes</span>
         </div>
         <div className="list list-scroll">
           {network.nodes.map((node, index) => (
-            <div key={`${node.id}-${node.type}-${index}`} className="list-item">
+            <div
+              key={`${node.id}-${node.type}-${index}`}
+              className={`list-item ${selectedNode === node.id ? 'selected' : ''}`}
+              onClick={() => setSelectedNode(selectedNode === node.id ? null : node.id)}
+            >
               <div className="row">
                 <strong>{node.label}</strong>
-                <span className="badge">{node.type}</span>
+                <span className="badge">{node.type === 'case' ? 'FIR' : 'Related'}</span>
               </div>
             </div>
           ))}
