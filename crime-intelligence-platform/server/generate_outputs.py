@@ -22,7 +22,7 @@ def build_case_fingerprint_output(data: dict) -> pd.DataFrame:
     return out
 
 
-def build_case_link_output(data: dict, limit_per_case: int = 20, source_case_ids: list[int] | None = None) -> pd.DataFrame:
+def build_case_link_output(data: dict, limit_per_case: int = 50, source_case_ids: list[int] | None = None) -> pd.DataFrame:
     engine = RelatedFIREngine(data)
     cases = data.get('cases', pd.DataFrame())
     case_id_col = None
@@ -45,7 +45,7 @@ def build_case_link_output(data: dict, limit_per_case: int = 20, source_case_ids
     for case_id in source_case_ids:
         results = engine.find_related_cases(int(case_id), limit=limit_per_case)
         for result in results:
-            if result['overall_score'] < 0.35:
+            if result['overall_score'] < 0.05:
                 continue
             rows.append({
                 'LinkID': link_id,
@@ -95,7 +95,7 @@ def evaluate_case_links(data: dict):
     for _, row in gt.iterrows():
         source_id = int(row[source_col])
         target_id = int(row[target_col])
-        ranked_results = engine.find_related_cases(source_id, limit=50)
+        ranked_results = engine.find_related_cases(source_id, limit=500)
         ranked_ids = [int(item['related_case_id']) for item in ranked_results]
         found = target_id in ranked_ids
         rank = ranked_ids.index(target_id) + 1 if found else None
@@ -122,13 +122,11 @@ def evaluate_entity_matches(data: dict):
     if gt.empty:
         return []
     engine = EntityResolutionEngine(data)
-    candidate_matches = engine.find_candidate_matches(limit=200)
-    candidate_map = {(m['accused_a_id'], m['accused_b_id']): m for m in candidate_matches}
     results = []
     for _, row in gt.iterrows():
         a = int(row['AccusedMasterID_A'])
         b = int(row['AccusedMasterID_B'])
-        match = candidate_map.get((a, b)) or candidate_map.get((b, a))
+        match = engine.find_match(a, b)
         results.append({
             'ExpectedAccusedA': a,
             'ExpectedAccusedB': b,

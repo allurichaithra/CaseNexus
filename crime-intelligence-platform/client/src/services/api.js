@@ -13,6 +13,19 @@ async function request(path) {
   return response.json();
 }
 
+async function requestPost(path, body) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Request failed with ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function getDashboard() {
   return request('/dashboard');
 }
@@ -52,4 +65,20 @@ export async function getNetwork(caseId) {
 
 export async function getEvaluation() {
   return request('/evaluation');
+}
+
+export async function decideCaseLink(caseId, payload) {
+  return requestPost(`/firs/${caseId}/related/action`, payload);
+}
+
+export async function getCaseLinkDecisions(caseId) {
+  return request(`/firs/${caseId}/related/decisions`);
+}
+
+export async function decideEntityMatch(payload) {
+  return requestPost('/entities/action', payload);
+}
+
+export async function getEntityDecisions() {
+  return request('/entities/decisions');
 }

@@ -5,6 +5,28 @@ function scoreLabel(value) {
   return typeof value === 'number' ? `${Math.round(value * 100)}%` : 'N/A';
 }
 
+function scoreColor(value) {
+  if (typeof value !== 'number') return 'var(--text-muted)';
+  if (value >= 0.7) return '#22c55e';
+  if (value >= 0.4) return '#f59e0b';
+  return '#ef4444';
+}
+
+function SkeletonCard() {
+  return (
+    <div className="skeleton-card">
+      <div className="skeleton skeleton-line w-40" style={{ marginBottom: 16 }} />
+      <div className="skeleton skeleton-line w-80" style={{ height: 40, borderRadius: 10 }} />
+      <div className="skeleton" style={{ height: 80, borderRadius: 10, marginTop: 12 }} />
+      <div className="score-grid" style={{ marginTop: 12 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: 40, borderRadius: 10 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function RelatedCasesPage() {
   const [cases, setCases] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -25,29 +47,37 @@ export default function RelatedCasesPage() {
 
   useEffect(() => {
     if (!selectedCase) return;
+    setRelated([]);
     getRelatedCases(selectedCase, 8).then((data) => setRelated(data?.items || []));
   }, [selectedCase]);
 
   const topMatch = related[0] || null;
-  const scoreGrid = useMemo(
-    () => [
-      ['Narrative score', topMatch?.narrative_score],
-      ['Crime pattern score', topMatch?.crime_pattern_score],
-      ['Legal section score', topMatch?.legal_section_score],
-      ['Geographic score', topMatch?.geographic_score],
-      ['Temporal score', topMatch?.temporal_score],
-      ['Entity score', topMatch?.entity_score],
-    ],
-    [topMatch],
-  );
 
-  if (loading) return <div className="card">Loading related-case intelligence…</div>;
+  if (loading) {
+    return (
+      <div className="grid">
+        <div className="skeleton-card">
+          <div className="skeleton skeleton-line w-40" style={{ marginBottom: 12 }} />
+          <div className="skeleton skeleton-line w-100" style={{ height: 40, borderRadius: 10 }} />
+        </div>
+        <div className="grid grid-2">
+          <SkeletonCard />
+          <div className="skeleton-card">
+            <div className="skeleton skeleton-line w-40" style={{ marginBottom: 12 }} />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: 80, borderRadius: 10, marginBottom: 8 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid">
       <div className="card">
-        <div className="row heading-row">
-          <h3>Related case intelligence</h3>
+        <div className="heading-row">
+          <h3>Related Case Intelligence</h3>
           <span className="badge">Explainable matches</span>
         </div>
         <select
@@ -65,59 +95,86 @@ export default function RelatedCasesPage() {
 
       <div className="grid grid-2">
         <div className="card hero-card">
-          <div className="row heading-row">
-            <h3>Top candidate explanation</h3>
-            <span className="badge">Hero card</span>
+          <div className="heading-row">
+            <h3>Top Candidate Explanation</h3>
+            <span className="badge">Best match</span>
           </div>
           {topMatch ? (
             <div className="list">
-              <div className="list-item row emphasis-row">
-                <span>Overall match percentage</span>
-                <strong>{scoreLabel(topMatch.overall_score)}</strong>
+              <div className="list-item emphasis-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Overall match confidence</span>
+                <strong style={{ fontSize: '1.4rem', color: scoreColor(topMatch.overall_score) }}>
+                  {scoreLabel(topMatch.overall_score)}
+                </strong>
               </div>
               <div className="list-item narrative-box">
-                <div className="row">
-                  <span>Evidence-based explanation</span>
-                </div>
-                <p className="muted secondary-copy">{topMatch.explanation}</p>
+                <p className="eyebrow" style={{ marginBottom: 6 }}>Evidence-based explanation</p>
+                <p className="secondary-copy">{topMatch.explanation}</p>
               </div>
               <div className="score-grid">
-                {scoreGrid.map(([label, value]) => (
+                {[
+                  ['Narrative', topMatch.narrative_score],
+                  ['Crime pattern', topMatch.crime_pattern_score],
+                  ['Legal section', topMatch.legal_section_score],
+                  ['Geographic', topMatch.geographic_score],
+                  ['Temporal', topMatch.temporal_score],
+                  ['Entity', topMatch.entity_score],
+                ].map(([label, value]) => (
                   <div key={label} className="score-pill">
                     <span>{label}</span>
-                    <strong>{scoreLabel(value)}</strong>
+                    <strong style={{ color: scoreColor(value) }}>{scoreLabel(value)}</strong>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="muted">No related candidates were returned for this case.</p>
+            <div className="empty-state">
+              <h4>No candidates found</h4>
+              <p>No related cases were returned for this selection.</p>
+            </div>
           )}
         </div>
 
         <div className="card">
-          <div className="row heading-row">
-            <h3>Ranked candidates</h3>
+          <div className="heading-row">
+            <h3>Ranked Candidates</h3>
             <span className="badge">{related.length} matches</span>
           </div>
           <div className="list list-scroll">
-            {related.map((item) => (
+            {related.map((item, index) => (
               <div key={`${item.related_case_id}-${item.overall_score}`} className="list-item">
                 <div className="row">
-                  <strong>FIR {item.related_case_id}</strong>
-                  <span className="badge">{scoreLabel(item.overall_score)}</span>
+                  <strong>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem', marginRight: 6 }}>
+                      #{index + 1}
+                    </span>
+                    FIR {item.related_case_id}
+                  </strong>
+                  <span className="badge" style={{ background: `rgba(${Math.round(scoreColor(item.overall_score) === '#22c55e' ? 34 : scoreColor(item.overall_score) === '#f59e0b' ? 245 : 239)}, ${Math.round(scoreColor(item.overall_score) === '#22c55e' ? 197 : scoreColor(item.overall_score) === '#f59e0b' ? 158 : 68)}, ${Math.round(scoreColor(item.overall_score) === '#22c55e' ? 94 : scoreColor(item.overall_score) === '#f59e0b' ? 11 : 68)}, 0.15)`, color: scoreColor(item.overall_score) }}>
+                    {scoreLabel(item.overall_score)}
+                  </span>
                 </div>
                 <div className="meta-column">
-                  <span>Narrative {scoreLabel(item.narrative_score)}</span>
-                  <span>Pattern {scoreLabel(item.crime_pattern_score)}</span>
-                  <span>Legal {scoreLabel(item.legal_section_score)}</span>
-                  <span>Geo {scoreLabel(item.geographic_score)}</span>
-                  <span>Temporal {scoreLabel(item.temporal_score)}</span>
-                  <span>Entity {scoreLabel(item.entity_score)}</span>
+                  {[
+                    ['Narrative', item.narrative_score],
+                    ['Pattern', item.crime_pattern_score],
+                    ['Legal', item.legal_section_score],
+                    ['Geo', item.geographic_score],
+                    ['Temporal', item.temporal_score],
+                    ['Entity', item.entity_score],
+                  ].filter(([, v]) => typeof v === 'number' && v > 0).map(([label, value]) => (
+                    <span key={label}>{label} {scoreLabel(value)}</span>
+                  ))}
                 </div>
                 <p className="muted secondary-copy">{item.explanation}</p>
               </div>
             ))}
+            {related.length === 0 && (
+              <div className="empty-state">
+                <h4>No matches</h4>
+                <p>Select a different case to find related investigations.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

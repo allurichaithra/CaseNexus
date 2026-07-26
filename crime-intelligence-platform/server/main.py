@@ -1,6 +1,11 @@
 from contextlib import asynccontextmanager
+import os
+import re
+from collections import defaultdict
+from datetime import datetime, timezone
 
 import pandas as pd
+from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +27,29 @@ from intelligence.entity_resolution import EntityResolutionEngine
 DATA = {}
 INTELLIGENCE = {}
 
+PROCESSED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "processed")
+CASE_LINK_CSV = os.path.join(PROCESSED_DIR, "CaseLinkResult.csv")
+ENTITY_MATCH_CSV = os.path.join(PROCESSED_DIR, "EntityMatchResult.csv")
+
+
+# ---------------------------------------------------------
+# PYDANTIC MODELS
+# ---------------------------------------------------------
+
+class CaseLinkAction(BaseModel):
+    target_case_id: int
+    status: str = Field(..., pattern=r"^(CONFIRMED|REJECTED)$")
+    officer_kgid: str = "IO_DEMO_01"
+    notes: str | None = None
+
+
+class EntityMatchAction(BaseModel):
+    entity_a_id: int
+    entity_b_id: int
+    status: str = Field(..., pattern=r"^(CONFIRMED|REJECTED)$")
+    officer_kgid: str = "IO_DEMO_01"
+    notes: str | None = None
+
 
 # ---------------------------------------------------------
 # HELPERS
@@ -42,6 +70,17 @@ def clean_value(value):
             pass
 
     return value
+
+
+def deep_clean(value):
+    """
+    Recursively clean a value, dict, or list of numpy/pandas types.
+    """
+    if isinstance(value, dict):
+        return {k: deep_clean(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [deep_clean(v) for v in value]
+    return clean_value(value)
 
 
 def row_to_dict(row):
@@ -82,13 +121,68 @@ async def lifespan(app: FastAPI):
     try:
 
         DATA = load_dataset()
+
+        # Build engines once
         fingerprint_engine = CaseFingerprintingEngine(DATA)
-        related_engine = RelatedFIREngine(DATA)
         entity_engine = EntityResolutionEngine(DATA)
+
+        # Precompute fingerprints as dict by case_id for O(1) lookup
+        fingerprints_list = fingerprint_engine.build_fingerprints()
+        fingerprint_cache = {
+            fp['case_master_id']: fp
+            for fp in fingerprints_list
+            if fp.get('case_master_id') is not None
+        }
+
+        # Build inverted index: token → set of case_ids
+        # Eliminates O(n²) full-table scan during narrative matching
+        inverted_index = defaultdict(set)
+        cases = DATA.get('cases', pd.DataFrame())
+        case_id_col = find_column(cases, ['CaseMasterID', 'case_master_id'])
+        if case_id_col:
+            for _, row in cases.iterrows():
+                cid = int(row[case_id_col])
+                text = str(row.get('BriefFacts') or '').lower()
+                text = re.sub(r'[^a-z0-9\s]', ' ', text)
+                text = re.sub(r'\s+', ' ', text).strip()
+                for token in text.split():
+                    if len(token) >= 3:
+                        inverted_index[token].add(cid)
+
+        # Precompute accused names per case for O(1) entity scoring
+        case_accused_names = defaultdict(set)
+        accused = DATA.get('accused', pd.DataFrame())
+        accused_case_col = find_column(accused, ['CaseMasterID', 'case_master_id'])
+        if accused_case_col:
+            for _, row in accused.iterrows():
+                name = str(row.get('AccusedName') or '').strip().lower()
+                if name:
+                    case_accused_names[int(row[accused_case_col])].add(name)
+
+        # Precompute act sections per case for O(1) legal scoring
+        case_act_sections = defaultdict(list)
+        act_sections_df = DATA.get('act_sections', pd.DataFrame())
+        act_case_col = find_column(act_sections_df, ['CaseMasterID', 'case_master_id'])
+        if act_case_col:
+            for _, row in act_sections_df.iterrows():
+                if pd.notna(row.get('ActID')) and pd.notna(row.get('SectionID')):
+                    case_act_sections[int(row[act_case_col])].append(
+                        f"{row.get('ActID')}:{row.get('SectionID')}"
+                    )
+
+        # Build related engine with precomputed indexes (no per-request rebuilds)
+        related_engine = RelatedFIREngine(
+            DATA,
+            inverted_index=inverted_index,
+            case_accused_names=case_accused_names,
+            case_act_sections=case_act_sections,
+        )
+
         INTELLIGENCE = {
-            'fingerprints': fingerprint_engine.build_fingerprints(),
-            'related': {},
-            'entities': {},
+            'fingerprints': fingerprint_cache,
+            'related_engine': related_engine,
+            'entity_engine': entity_engine,
+            'related_cases': {},
         }
 
         print("\nDataset loaded successfully.")
@@ -227,7 +321,7 @@ def dashboard():
             else 0
         ),
         "ground_truth_case_links": len(gt_links),
-        "fingerprints_generated": len(INTELLIGENCE.get("fingerprints", [])),
+        "fingerprints_generated": len(INTELLIGENCE.get("fingerprints", {})),
     }
 
     return result
@@ -242,7 +336,7 @@ def get_firs(
     limit: int | None = Query(
         default=50,
         ge=1,
-        le=500,
+        le=5000,
     ),
     offset: int | None = Query(
         default=0,
@@ -421,8 +515,7 @@ def get_fir(case_id: int):
             for _, row in rows.iterrows()
         ]
 
-    fingerprint_engine = CaseFingerprintingEngine(DATA)
-    fingerprint = fingerprint_engine.get_case_fingerprint(matching_cases.iloc[0])
+    fingerprint = deep_clean(INTELLIGENCE['fingerprints'].get(case_id, {}))
 
     return {
         "case": case,
@@ -435,23 +528,43 @@ def get_fir(case_id: int):
 
 @app.get("/api/firs/{case_id}/related")
 def get_related_firs(case_id: int, limit: int = Query(default=10, ge=1, le=25)):
-    engine = RelatedFIREngine(DATA)
-    results = engine.find_related_cases(case_id, limit=limit)
+    if case_id not in INTELLIGENCE['related_cases']:
+        INTELLIGENCE['related_cases'][case_id] = INTELLIGENCE['related_engine'].find_related_cases(case_id, limit=25)
+    cached = INTELLIGENCE['related_cases'][case_id]
     return {
-        "case_id": case_id,
-        "count": len(results),
-        "items": results,
+        'case_id': case_id,
+        'count': min(limit, len(cached)),
+        'items': cached[:limit],
     }
 
 
 @app.get("/api/entities")
 def get_entities(limit: int = Query(default=20, ge=1, le=100)):
-    engine = EntityResolutionEngine(DATA)
-    matches = engine.find_candidate_matches(limit=limit)
+    matches = INTELLIGENCE['entity_engine'].find_candidate_matches(limit=limit)
     return {
         "count": len(matches),
         "items": matches,
     }
+
+
+@app.get("/api/entities/decisions")
+def get_entity_decisions():
+    df = _read_csv_safe(ENTITY_MATCH_CSV)
+    if df.empty:
+        return {"count": 0, "decisions": []}
+
+    decisions = []
+    for _, row in df.iterrows():
+        decisions.append(deep_clean({
+            "entity_a_id": row.get("AccusedMasterID_A"),
+            "entity_b_id": row.get("AccusedMasterID_B"),
+            "confidence": row.get("MatchConfidence"),
+            "status": row.get("OfficerDecision"),
+            "officer_id": row.get("ReviewedByOfficerID"),
+            "timestamp": row.get("Timestamp"),
+        }))
+
+    return {"count": len(decisions), "decisions": decisions}
 
 
 @app.get("/api/entities/{entity_id}")
@@ -485,7 +598,7 @@ def get_entity_cases(entity_id: int):
 
 
 @app.get("/api/hotspots")
-def get_hotspots(limit: int = Query(default=10, ge=1, le=50)):
+def get_hotspots(limit: int = Query(default=10, ge=1, le=5000)):
     cases = DATA.get('cases', pd.DataFrame())
     if cases.empty:
         return {'items': []}
@@ -544,7 +657,7 @@ def get_network(case_id: int | None = None):
     for _, row in target_cases.iterrows():
         nodes.append({'id': int(row.get(case_id_col)), 'type': 'case', 'label': f"FIR {row.get(case_id_col)}"})
     if case_id is not None and not target_cases.empty:
-        related = RelatedFIREngine(DATA).find_related_cases(case_id, limit=5)
+        related = INTELLIGENCE['related_engine'].find_related_cases(case_id, limit=5)
         for item in related:
             nodes.append({'id': item['related_case_id'], 'type': 'related_case', 'label': f"FIR {item['related_case_id']}"})
             edges.append({'source': case_id, 'target': item['related_case_id'], 'label': 'related'})
@@ -564,6 +677,133 @@ def get_evaluation():
             'rows': len(gt_entities),
             'columns': list(gt_entities.columns),
         },
+    }
+
+
+# ---------------------------------------------------------
+# CSV PERSISTENCE HELPERS
+# ---------------------------------------------------------
+
+def _read_csv_safe(path):
+    if os.path.exists(path):
+        df = pd.read_csv(path)
+        df = df.where(pd.notna(df), None)
+        return df
+    return pd.DataFrame()
+
+
+def _write_csv_safe(df, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.to_csv(path, index=False)
+
+
+# ---------------------------------------------------------
+# CASE LINK DECISIONS
+# ---------------------------------------------------------
+
+@app.post("/api/firs/{case_id}/related/action")
+def decide_case_link(case_id: int, action: CaseLinkAction):
+    df = _read_csv_safe(CASE_LINK_CSV)
+    if df.empty:
+        raise HTTPException(status_code=500, detail="CaseLinkResult.csv not found")
+
+    query_col = "QueryCaseMasterID"
+    candidate_col = "CandidateCaseMasterID"
+
+    mask = (df[query_col] == case_id) & (df[candidate_col] == action.target_case_id)
+    if not mask.any():
+        mask = (df[query_col] == action.target_case_id) & (df[candidate_col] == case_id)
+
+    if not mask.any():
+        raise HTTPException(status_code=404, detail="No proposed link found for this pair")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    for col in ["OfficerDecision", "ReviewedByOfficerID", "Timestamp"]:
+        if col in df.columns and df[col].dtype != object:
+            df[col] = df[col].astype(object)
+
+    df.loc[mask, "OfficerDecision"] = action.status
+    df.loc[mask, "ReviewedByOfficerID"] = action.officer_kgid
+    df.loc[mask, "Timestamp"] = now
+
+    _write_csv_safe(df, CASE_LINK_CSV)
+
+    return {
+        "ok": True,
+        "case_id": case_id,
+        "target_case_id": action.target_case_id,
+        "status": action.status,
+        "officer_kgid": action.officer_kgid,
+        "timestamp": now,
+    }
+
+
+@app.get("/api/firs/{case_id}/related/decisions")
+def get_case_link_decisions(case_id: int):
+    df = _read_csv_safe(CASE_LINK_CSV)
+    if df.empty:
+        return {"case_id": case_id, "decisions": []}
+
+    query_col = "QueryCaseMasterID"
+    candidate_col = "CandidateCaseMasterID"
+
+    mask = (df[query_col] == case_id) | (df[candidate_col] == case_id)
+    subset = df[mask]
+
+    decisions = []
+    for _, row in subset.iterrows():
+        decisions.append(deep_clean({
+            "query_case_id": row.get("QueryCaseMasterID"),
+            "candidate_case_id": row.get("CandidateCaseMasterID"),
+            "confidence": row.get("OverallConfidence"),
+            "status": row.get("OfficerDecision"),
+            "officer_id": row.get("ReviewedByOfficerID"),
+            "timestamp": row.get("Timestamp"),
+        }))
+
+    return {"case_id": case_id, "count": len(decisions), "decisions": decisions}
+
+
+# ---------------------------------------------------------
+# ENTITY MATCH DECISIONS
+# ---------------------------------------------------------
+
+@app.post("/api/entities/action")
+def decide_entity_match(action: EntityMatchAction):
+    df = _read_csv_safe(ENTITY_MATCH_CSV)
+    if df.empty:
+        raise HTTPException(status_code=500, detail="EntityMatchResult.csv not found")
+
+    col_a = "AccusedMasterID_A"
+    col_b = "AccusedMasterID_B"
+
+    mask = (df[col_a] == action.entity_a_id) & (df[col_b] == action.entity_b_id)
+    if not mask.any():
+        mask = (df[col_a] == action.entity_b_id) & (df[col_b] == action.entity_a_id)
+
+    if not mask.any():
+        raise HTTPException(status_code=404, detail="No proposed entity match found for this pair")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    for col in ["OfficerDecision", "ReviewedByOfficerID", "Timestamp"]:
+        if col in df.columns and df[col].dtype != object:
+            df[col] = df[col].astype(object)
+
+    df.loc[mask, "OfficerDecision"] = action.status
+    df.loc[mask, "ReviewedByOfficerID"] = action.officer_kgid
+    df.loc[mask, "Timestamp"] = now
+
+    _write_csv_safe(df, ENTITY_MATCH_CSV)
+
+    return {
+        "ok": True,
+        "entity_a_id": action.entity_a_id,
+        "entity_b_id": action.entity_b_id,
+        "status": action.status,
+        "officer_kgid": action.officer_kgid,
+        "timestamp": now,
     }
 
 

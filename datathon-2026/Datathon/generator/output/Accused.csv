@@ -188,7 +188,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 187,105,Ramesh Rao,22,1,A3
 188,106,Suresh Shetty,47,2,A1
 189,107,Venkatesh Pujari,33,2,A1
-190,107,Anitha Hegde,33,1,A2
+190,107,Anitha Gowda,31,1,A2
 191,108,Mahesh Patil,44,2,A1
 192,109,Ganesh Deshmukh,34,1,A1
 193,110,Suresh Hegde,36,1,A1
@@ -1025,7 +1025,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 1024,583,Manjunath Hegde,20,1,A2
 1025,584,Sunita Hegde,38,2,A1
 1026,584,Venkatesh Reddy,50,1,A2
-1027,584,Priya Gowda,37,1,A3
+1027,584,Priya Kumar,35,1,A3
 1028,585,Venkatesh Hegde,25,1,A1
 1029,585,Kavitha Rao,21,1,A2
 1030,586,Ramesh Patil,36,1,A1
@@ -1952,7 +1952,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 1951,1121,Kavitha Kulkarni,29,2,A1
 1952,1122,Anitha Hegde,48,2,A1
 1953,1122,Lakshmi Hegde,36,1,A2
-1954,1123,Mahesh Patil,36,1,A1
+1954,1123,Mahesh Patil,33,1,A1
 1955,1123,Anitha Patil,36,1,A2
 1956,1123,Vijay Patil,33,2,A3
 1957,1124,Ramesh Deshmukh,31,1,A1
@@ -2268,7 +2268,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 2267,1297,Suresh Kulkarni,41,1,A1
 2268,1298,Mahesh Kulkarni,41,1,A1
 2269,1299,Mahesh Kumar,24,1,A1
-2270,1300,Suresh Kumar,48,1,A1
+2270,1300,Suresh Kumar,37,1,A1
 2271,1301,Suresh Patil,32,1,A1
 2272,1301,Vijay Nayak,42,1,A2
 2273,1302,Anitha Patil,41,2,A1
@@ -2323,7 +2323,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 2322,1325,Vijay Deshmukh,32,1,A3
 2323,1326,Sunita Deshmukh,45,1,A1
 2324,1326,Priya Bhat,20,2,A2
-2325,1326,Manjunath Hegde,25,1,A3
+2325,1326,Manjunath Bhat,30,1,A3
 2326,1327,Anitha Patil,27,2,A1
 2327,1327,Mahesh Nayak,27,1,A2
 2328,1328,Sunita Gowda,29,1,A1
@@ -2386,7 +2386,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 2385,1360,Vijay Bhat,38,2,A2
 2386,1360,Ganesh Pujari,27,2,A3
 2387,1361,Kavitha Rao,50,2,A1
-2388,1362,Suresh Bhat,47,1,A1
+2388,1362,Suresh Bhat,33,1,A1
 2389,1362,Vijay Rao,45,1,A2
 2390,1362,Lakshmi Rao,25,1,A3
 2391,1363,Venkatesh Deshmukh,22,1,A1
@@ -2699,7 +2699,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 2698,1535,Manjunath Nayak,27,2,A1
 2699,1535,Suresh Shetty,43,1,A2
 2700,1536,Sunita Kumar,40,2,A1
-2701,1537,Vijay Rao,24,1,A1
+2701,1537,Vijay Patil,30,1,A1
 2702,1538,Suresh Bhat,20,1,A1
 2703,1539,Priya Rao,42,1,A1
 2704,1540,Suresh Patil,28,1,A1
@@ -2970,7 +2970,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 2969,1696,Anitha Deshmukh,50,1,A1
 2970,1696,Anitha Shetty,44,2,A2
 2971,1697,Ganesh Kulkarni,39,1,A1
-2972,1697,Ramesh Pujari,25,1,A2
+2972,1697,Ramesh Kumar,33,1,A2
 2973,1697,Anitha Gowda,48,1,A3
 2974,1698,Kavitha Shetty,33,2,A1
 2975,1698,Sunita Gowda,26,2,A2
@@ -3133,7 +3133,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 3132,1790,Manjunath Kulkarni,23,1,A1
 3133,1790,Mahesh Reddy,35,2,A2
 3134,1791,Suresh Bhat,22,1,A1
-3135,1792,Vijay Bhat,32,1,A1
+3135,1792,Vijay Deshmukh,30,1,A1
 3136,1793,Sunita Patil,23,1,A1
 3137,1793,Priya Bhat,23,1,A2
 3138,1793,Ramesh Kulkarni,43,1,A3
@@ -3401,7 +3401,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 3400,1935,Venkatesh Rao,29,1,A1
 3401,1935,Kavitha Kulkarni,38,1,A2
 3402,1935,Lakshmi Shetty,35,2,A3
-3403,1936,Ganesh Nayak,45,2,A1
+3403,1936,Ganesh Kulkarni,32,2,A1
 3404,1937,Ramesh Kumar,44,2,A1
 3405,1938,Ganesh Reddy,45,1,A1
 3406,1938,Sunita Reddy,25,2,A2
@@ -3712,7 +3712,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 3711,2114,Priya Kulkarni,20,1,A3
 3712,2115,Priya Kulkarni,34,1,A1
 3713,2115,Anitha Rao,36,1,A2
-3714,2115,Mahesh Shetty,46,2,A3
+3714,2115,Mahesh Kumar,35,2,A3
 3715,2116,Suresh Hegde,38,1,A1
 3716,2117,Vijay Nayak,23,1,A1
 3717,2118,Ganesh Hegde,44,1,A1
@@ -3855,7 +3855,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 3854,2196,Priya Hegde,19,1,A1
 3855,2197,Anitha Kumar,20,1,A1
 3856,2198,Vijay Hegde,21,1,A1
-3857,2198,Lakshmi Kumar,29,1,A2
+3857,2198,Lakshmi Kumar,33,1,A2
 3858,2199,Mahesh Kumar,42,2,A1
 3859,2200,Kavitha Rao,45,1,A1
 3860,2201,Ramesh Reddy,44,1,A1
@@ -3979,7 +3979,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 3978,2267,Sunita Kulkarni,50,1,A1
 3979,2267,Ramesh Reddy,49,1,A2
 3980,2268,Ganesh Reddy,44,1,A1
-3981,2268,Venkatesh Kumar,41,2,A2
+3981,2268,Venkatesh Kumar,30,2,A2
 3982,2268,Sunita Shetty,19,2,A3
 3983,2269,Ramesh Bhat,49,1,A1
 3984,2269,Sunita Gowda,50,2,A2
@@ -4444,7 +4444,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 4443,2533,Suresh Deshmukh,28,1,A1
 4444,2533,Suresh Rao,30,1,A2
 4445,2534,Ramesh Kumar,20,1,A1
-4446,2535,Lakshmi Reddy,48,1,A1
+4446,2535,Lakshmi Reddy,44,1,A1
 4447,2536,Manjunath Shetty,40,1,A1
 4448,2536,Manjunath Rao,35,2,A2
 4449,2537,Priya Rao,26,2,A1
@@ -4784,7 +4784,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 4783,2717,Ganesh Deshmukh,23,1,A2
 4784,2717,Lakshmi Nayak,29,1,A3
 4785,2718,Manjunath Patil,35,1,A1
-4786,2718,Lakshmi Rao,23,1,A2
+4786,2718,Lakshmi Kumar,28,1,A2
 4787,2718,Mahesh Gowda,22,2,A3
 4788,2719,Lakshmi Pujari,41,1,A1
 4789,2719,Lakshmi Patil,39,1,A2
@@ -4963,7 +4963,7 @@ AccusedMasterID,CaseMasterID,AccusedName,AgeYear,GenderID,PersonID
 4962,2808,Suresh Patil,30,1,A1
 4963,2808,Venkatesh Bhat,25,2,A2
 4964,2808,Priya Patil,27,1,A3
-4965,2809,Ramesh Kulkarni,40,1,A1
+4965,2809,Ramesh Kumar,35,1,A1
 4966,2810,Lakshmi Gowda,31,1,A1
 4967,2810,Sunita Kulkarni,39,1,A2
 4968,2811,Mahesh Nayak,40,1,A1

@@ -36,7 +36,7 @@ class CaseFingerprintingEngine:
                 act_sections = [
                     f"{row.get('ActID')}:{row.get('SectionID')}"
                     for _, row in related.iterrows()
-                    if not pd.isna(row.get('ActID')) or not pd.isna(row.get('SectionID'))
+                    if pd.notna(row.get('ActID')) and pd.notna(row.get('SectionID'))
                 ]
 
         crime_head_df = self.data.get('crime_heads', pd.DataFrame())

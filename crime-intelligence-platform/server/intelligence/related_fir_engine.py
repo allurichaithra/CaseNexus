@@ -8,16 +8,22 @@ import pandas as pd
 class RelatedFIREngine:
     """Generate explainable related-FIR candidates using deterministic scoring."""
 
-    def __init__(self, data: Dict[str, pd.DataFrame], weights: Dict[str, float] | None = None):
+    def __init__(self, data: Dict[str, pd.DataFrame], weights: Dict[str, float] | None = None,
+                 inverted_index: Dict[str, set] | None = None,
+                 case_accused_names: Dict[int, set] | None = None,
+                 case_act_sections: Dict[int, list] | None = None):
         self.data = data
         self.weights = weights or {
-            'narrative': 0.40,
-            'crime': 0.25,
+            'narrative': 0.25,
+            'crime': 0.15,
             'legal': 0.10,
-            'geographic': 0.15,
-            'temporal': 0.05,
-            'entity': 0.05,
+            'geographic': 0.30,
+            'temporal': 0.10,
+            'entity': 0.10,
         }
+        self.inverted_index = inverted_index
+        self.case_accused_names = case_accused_names or {}
+        self.case_act_sections = case_act_sections or {}
 
     def _find_column(self, df: pd.DataFrame, possible_names: List[str]):
         lookup = {str(column).lower(): column for column in df.columns}
@@ -61,11 +67,11 @@ class RelatedFIREngine:
             if pd.isna(left_dt) or pd.isna(right_dt):
                 return 0.0
             delta_days = abs((left_dt - right_dt).days)
-            if delta_days <= 3:
+            if delta_days <= 7:
                 return 1.0
-            if delta_days <= 14:
-                return 0.6
             if delta_days <= 30:
+                return 0.6
+            if delta_days <= 90:
                 return 0.3
             return 0.0
         except Exception:
@@ -78,11 +84,11 @@ class RelatedFIREngine:
             lat1, lon1 = float(left_lat), float(left_lon)
             lat2, lon2 = float(right_lat), float(right_lon)
             distance_km = self._distance_km(lat1, lon1, lat2, lon2)
-            if distance_km <= 2:
+            if distance_km <= 5:
                 return 1.0
-            if distance_km <= 8:
+            if distance_km <= 15:
                 return 0.7
-            if distance_km <= 20:
+            if distance_km <= 40:
                 return 0.35
             return 0.0
         except Exception:
@@ -96,6 +102,10 @@ class RelatedFIREngine:
         return 6371.0 * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
     def _entity_score(self, left_case_id: Any, right_case_id: Any) -> float:
+        if self.case_accused_names:
+            left_names = self.case_accused_names.get(int(left_case_id), set())
+            right_names = self.case_accused_names.get(int(right_case_id), set())
+            return 1.0 if left_names & right_names else 0.0
         accused_df = self.data.get('accused', pd.DataFrame())
         if accused_df.empty:
             return 0.0
@@ -119,14 +129,14 @@ class RelatedFIREngine:
             return []
         source = source_case.iloc[0]
 
+        source_sections = self.case_act_sections.get(int(case_id), []) if self.case_act_sections else []
         act_section_df = self.data.get('act_sections', pd.DataFrame())
         act_section_case_col = self._find_column(act_section_df, ['CaseMasterID', 'case_master_id'])
-        source_sections = []
-        if not act_section_df.empty and act_section_case_col:
+        if not source_sections and not act_section_df.empty and act_section_case_col:
             source_sections = [
                 f"{row.get('ActID')}:{row.get('SectionID')}"
                 for _, row in act_section_df[act_section_df[act_section_case_col] == case_id].iterrows()
-                if not pd.isna(row.get('ActID')) or not pd.isna(row.get('SectionID'))
+                if pd.notna(row.get('ActID')) and pd.notna(row.get('SectionID'))
             ]
 
         source_text = self._normalize_text(str(source.get('BriefFacts') or ''))
@@ -149,8 +159,12 @@ class RelatedFIREngine:
                 if int(item) != int(case_id)
             )
 
-        source_tokens = {token for token in self._normalize_text(str(source.get('BriefFacts') or '')).split() if len(token) >= 3}
-        if source_tokens:
+        source_tokens = {token for token in source_text.split() if len(token) >= 3}
+        if source_tokens and self.inverted_index:
+            for token in source_tokens:
+                candidate_ids.update(self.inverted_index.get(token, set()))
+            candidate_ids.discard(int(case_id))
+        elif source_tokens:
             for _, candidate in cases.iterrows():
                 candidate_id = candidate.get(case_id_col)
                 if pd.isna(candidate_id) or int(candidate_id) == int(case_id):
@@ -159,10 +173,7 @@ class RelatedFIREngine:
                 if source_tokens & candidate_tokens:
                     candidate_ids.add(int(candidate_id))
 
-        if not candidate_ids:
-            candidate_ids.update(int(item) for item in cases[case_id_col].dropna().astype(int).tolist() if int(item) != int(case_id))
-
-        candidate_ids = list(candidate_ids)[: max(limit * 4, 120)]
+        candidate_ids = list(candidate_ids)
 
         results = []
         for candidate_id in candidate_ids:
@@ -218,13 +229,15 @@ class RelatedFIREngine:
         return results[:limit]
 
     def _candidate_sections(self, case_id: Any, act_section_df: pd.DataFrame, case_col: str | None) -> List[str]:
+        if self.case_act_sections:
+            return self.case_act_sections.get(int(case_id), [])
         if act_section_df.empty or not case_col:
             return []
         related = act_section_df[act_section_df[case_col] == case_id]
         return [
             f"{row.get('ActID')}:{row.get('SectionID')}"
             for _, row in related.iterrows()
-            if not pd.isna(row.get('ActID')) or not pd.isna(row.get('SectionID'))
+            if pd.notna(row.get('ActID')) and pd.notna(row.get('SectionID'))
         ]
 
     def _build_explanation(self, narrative_score: float, crime_score: float, legal_score: float, geographic_score: float, temporal_score: float, entity_score: float, source: pd.Series, candidate: pd.Series, source_sections: List[str]) -> str:
