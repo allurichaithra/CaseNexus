@@ -44,8 +44,8 @@ function App() {
         <div className="brand-block">
           <div className="brand-icon">🛡️</div>
           <div>
-            <h1>Crime Intelligence</h1>
-            <p>Operational analytics</p>
+            <h1>CaseNexus</h1>
+            <p>Connecting cases. Revealing patterns. Accelerating investigations.</p>
           </div>
         </div>
 
